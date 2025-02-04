@@ -115,7 +115,8 @@ public class Radar : IDisposable
     private Dictionary<ushort, bool> IsPvpZone => isPvpZoneDict
                                                       ??= TerritoryTypeSheet.ToDictionary(
                                                           i => (ushort)i.RowId,
-                                                          j => j.IsPvpZone
+                                                          //j => j.IsPvpZone
+                                                          false
                                                       );
     private static readonly ExcelSheet<TerritoryType> TerritoryTypeSheet = Plugin.DataManager.GetExcelSheet<TerritoryType>();
     private static readonly ExcelSheet<Map> MapSheet = Plugin.DataManager.GetExcelSheet<Map>();
