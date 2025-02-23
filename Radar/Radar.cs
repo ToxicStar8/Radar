@@ -6,12 +6,16 @@ using Dalamud.Interface.Textures;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Kernel;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.STD;
 using ImGuiNET;
 using Lumina.Excel;
+using Lumina.Excel.Sheets;
 using Radar.CustomObject;
 using Radar.Utils;
 using SharpDX;
@@ -115,8 +119,7 @@ public class Radar : IDisposable
     private Dictionary<ushort, bool> IsPvpZone => isPvpZoneDict
                                                       ??= TerritoryTypeSheet.ToDictionary(
                                                           i => (ushort)i.RowId,
-                                                          //j => j.IsPvpZone
-                                                          j=>false
+                                                          j => j.IsPvpZone
                                                       );
     private static readonly ExcelSheet<TerritoryType> TerritoryTypeSheet = Plugin.DataManager.GetExcelSheet<TerritoryType>();
     private static readonly ExcelSheet<Map> MapSheet = Plugin.DataManager.GetExcelSheet<Map>();
@@ -152,65 +155,60 @@ public class Radar : IDisposable
 
     private unsafe void UiBuilder_OnBuildUi()
     {
-        var isPvpZone = Plugin.ClientState.TerritoryType != 0 && IsPvpZone.TryGetValue(Plugin.ClientState.TerritoryType, out var value) && value;
-
-        if (!isPvpZone)
+        var controlCamera = CameraManager.Instance()->GetActiveCamera();
+        var renderCamera = ((controlCamera != null) ? controlCamera->SceneCamera.RenderCamera : null);
+        if (renderCamera != null)
         {
-            var controlCamera = CameraManager.Instance()->GetActiveCamera();
-            var renderCamera = ((controlCamera != null) ? controlCamera->SceneCamera.RenderCamera : null);
-            if (renderCamera != null)
+            Matrix4x4 view = renderCamera->ViewMatrix;
+            Matrix4x4 proj = renderCamera->ProjectionMatrix;
+            MatrixSingetonCache = Matrix4x4ToSharpDX(view * proj);
+            var device = Device.Instance();
+            ViewPortSizeCache = new Vector2(device->Width, device->Height);
+            foregroundDrawList = ImGui.GetForegroundDrawList(ImGui.GetMainViewport());
+            backgroundDrawList = ImGui.GetBackgroundDrawList(ImGui.GetMainViewport());
+            RefreshMeScreenPos();
+            RefreshMeWorldPos();
+            if (Plugin.Configuration.DeepDungeon_EnableTrapView && Plugin.Condition[ConditionFlag.InDeepDungeon])
             {
-                Matrix4x4 view = renderCamera->ViewMatrix;
-                Matrix4x4 proj = renderCamera->ProjectionMatrix;
-                MatrixSingetonCache = Matrix4x4ToSharpDX(view * proj);
-                var device = Device.Instance();
-                ViewPortSizeCache = new Vector2(device->Width, device->Height);
-                foregroundDrawList = ImGui.GetForegroundDrawList(ImGui.GetMainViewport());
-                backgroundDrawList = ImGui.GetBackgroundDrawList(ImGui.GetMainViewport());
-                RefreshMeScreenPos();
-                RefreshMeWorldPos();
-                if (Plugin.Configuration.DeepDungeon_EnableTrapView && Plugin.Condition[ConditionFlag.InDeepDungeon])
-                {
-                    DrawDeepDungeonObjects();
-                }
-                bool num = FontsSize > 2;
-                if (num && Plugin.Configuration.Overlay3D_UseLargeFont)
-                {
-                    ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[2]);
-                }
-                if (Plugin.ObjectTable != null)
-                {
-                    EnumerateAllObjects();
-                }
-                if (num && Plugin.Configuration.Overlay3D_UseLargeFont)
-                {
-                    ImGui.PopFont();
-                }
-                if (num && Plugin.Configuration.Overlay2D_UseLargeFont)
-                {
-                    ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[2]);
-                }
-                if (Plugin.Configuration.Overlay2D_Enabled)
-                {
-                    DrawMapOverlay();
-                }
-                if (Plugin.Configuration.ExternalMap_Enabled)
-                {
-                    DrawExternalMap();
-                }
-                if (num && Plugin.Configuration.Overlay2D_UseLargeFont)
-                {
-                    ImGui.PopFont();
-                }
-                if (num && Plugin.Configuration.OverlayHint_LargeFont)
-                {
-                    ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[2]);
-                }
-                DrawSpecialObjectTipWindows();
-                if (num && Plugin.Configuration.OverlayHint_LargeFont)
-                {
-                    ImGui.PopFont();
-                }
+                DrawDeepDungeonObjects();
+            }
+            bool num = FontsSize > 2;
+            if (num && Plugin.Configuration.Overlay3D_UseLargeFont)
+            {
+                ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[2]);
+            }
+            if (Plugin.ObjectTable != null)
+            {
+                EnumerateAllObjects();
+            }
+            if (num && Plugin.Configuration.Overlay3D_UseLargeFont)
+            {
+                ImGui.PopFont();
+            }
+            if (num && Plugin.Configuration.Overlay2D_UseLargeFont)
+            {
+                ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[2]);
+            }
+            if (Plugin.Configuration.Overlay2D_Enabled)
+            {
+                DrawMapOverlay();
+            }
+            if (Plugin.Configuration.ExternalMap_Enabled)
+            {
+                DrawExternalMap();
+            }
+            if (num && Plugin.Configuration.Overlay2D_UseLargeFont)
+            {
+                ImGui.PopFont();
+            }
+            if (num && Plugin.Configuration.OverlayHint_LargeFont)
+            {
+                ImGui.PushFont(ImGui.GetIO().Fonts.Fonts[2]);
+            }
+            DrawSpecialObjectTipWindows();
+            if (num && Plugin.Configuration.OverlayHint_LargeFont)
+            {
+                ImGui.PopFont();
             }
         }
 
@@ -439,7 +437,7 @@ public class Radar : IDisposable
         return false;
     }
 
-    private void AddObjectTo2DDrawList(IGameObject iGameObject, uint foregroundColor, uint backgroundColor)
+    private unsafe void AddObjectTo2DDrawList(IGameObject iGameObject, uint foregroundColor, uint backgroundColor)
     {
         string dictionaryName = iGameObject.Name.TextValue;
         if (Plugin.Configuration.NpcBaseMapping.ContainsKey(iGameObject.DataId))
@@ -461,6 +459,33 @@ public class Radar : IDisposable
             case 0:
                 break;
         }
+
+        if (GameMain.IsInPvPInstance())
+        {
+            var chara = (Character*)iGameObject.Address;
+            if (chara is not null)
+            {
+                if(chara->IsDead())
+                {
+                    return;
+                }
+
+                backgroundColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0, 0, 0, 255));
+                //判断阵营并修改颜色
+                foregroundColor = chara->Battalion switch
+                {
+                    // 黑涡团
+                    0 => ImGui.ColorConvertFloat4ToU32(new Vector4(255, 0, 0, 255)),
+                    // 双蛇党
+                    1 => ImGui.ColorConvertFloat4ToU32(new Vector4(255, 255, 0, 255)),
+                    // 恒辉队
+                    2 => ImGui.ColorConvertFloat4ToU32(new Vector4(0, 0, 255, 255)),
+                    //无
+                    _ => foregroundColor
+                };
+            }
+        }
+
         DrawList2D.Add((iGameObject.Position, foregroundColor, backgroundColor, item));
     }
 

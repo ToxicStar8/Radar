@@ -14,8 +14,8 @@
   <PropertyGroup>
     <LangVersion>11.0</LangVersion>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <Authors>akira0245, KirisameVanilla</Authors>
-    <Version>2.1.0.5</Version>
+    <Authors>akira0245, KirisameVanilla, ToxicStar</Authors>
+    <Version>2.1.0.6</Version>
     <DalamudLibPath Condition=" '$(Configuration)' == 'SE'">$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
     <DalamudLibPath Condition=" '$(Configuration)' == 'SQ'">$(appdata)\XIVLauncherCN\addon\Hooks\dev\</DalamudLibPath>
     <DalamudLibPath Condition=" '$(Configuration)' == 'Debug'">$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
