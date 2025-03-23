@@ -465,7 +465,15 @@ public class Radar : IDisposable
             var chara = (Character*)iGameObject.Address;
             if (chara is not null)
             {
-                if(chara->IsDead())
+                if (chara->IsDead())
+                {
+                    return;
+                }
+                if (chara->IsPartyMember)
+                {
+                    return;
+                }
+                if (chara->IsAllianceMember)
                 {
                     return;
                 }
