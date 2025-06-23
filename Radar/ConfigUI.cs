@@ -17,7 +17,7 @@ namespace Radar;
 public class ConfigUi : Window, IDisposable
 {
     public ConfigUi()
-        : base("Radar##ConfigUi", ImGuiWindowFlags.AlwaysAutoResize)
+        : base("Radar##ConfigUi", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoCollapse)
     {
         SizeConstraints = new WindowSizeConstraints
         {
@@ -30,15 +30,11 @@ public class ConfigUi : Window, IDisposable
     {
         using var tabBar = ImRaii.TabBar("RadarTabBar", ImGuiTabBarFlags.Reorderable);
         if (!tabBar) return;
-
+        About();
         ObjectKind();
-
         SpecialObject();
-
         Overlay2D();
-
         Overlay3D();
-
         DeepDungeonRecord();
     }
 
@@ -184,7 +180,6 @@ public class ConfigUi : Window, IDisposable
 
         using (ImRaii.Table("CustomObjectTable", 4, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.PadOuterX))
         {
-            ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableSetupColumn("自定义物体名");
             ImGui.TableSetupColumn("启用");
             ImGui.TableSetupColumn("颜色");
@@ -327,7 +322,6 @@ public class ConfigUi : Window, IDisposable
         using (ImRaii.Table("ObjectKindTable", 3,
                             ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.PadOuterX | ImGuiTableFlags.ScrollY))
         {
-            ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableSetupColumn("物体类别");
             ImGui.TableSetupColumn("前景色");
             ImGui.TableSetupColumn("背景色");
@@ -495,5 +489,16 @@ public class ConfigUi : Window, IDisposable
             };
         }
 
+    }
+
+    private static void About()
+    {
+        using var tabObjectKind = ImRaii.TabItem("关于");
+        if (!tabObjectKind) return;
+        ImGui.TextWrapped("本插件原作者: akira0245");
+        ImGui.TextWrapped("目前重构及维护: KirisameVanilla");
+        ImGui.TextWrapped("目前版本: 2.1.1.0");
+        ImGui.TextWrapped("不兼容部分完全改变地图材质的mod, 特别是能够修改地图缩放限制的");
+        ImGui.TextWrapped("小提示: 设置栏顺序能拖动改变");
     }
 }
