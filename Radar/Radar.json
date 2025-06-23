@@ -6,7 +6,7 @@
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/KirisameVanilla/Radar",
     "Tags": [],
-    "DalamudApiLevel": 11,
+    "DalamudApiLevel": 12,
     "LoadRequiredState": 0,
     "LoadSync": false,
     "CanUnloadAsync": false,
